@@ -18,18 +18,16 @@ db.connect(function (err) {
 })
 console.log('app listen port ' + port);
 // Define/initialize our global vars
-var notes = []
-var isInitNotes = false
+var devices = [];
+var isInitDevices = false;
 var socketCount = 0
+var maxIdUserRequest = 0;
 
 io.sockets.on('connection', function (socket) {
-    // Socket has connected, increase socket count
     socketCount++
-    // Let all sockets know how many are connected
     io.sockets.emit('users connected', socketCount)
 
     socket.on('disconnect', function () {
-        // Decrease the socket count on a disconnect, emit
         socketCount--
         io.sockets.emit('users connected', socketCount)
     })
@@ -41,23 +39,40 @@ io.sockets.on('connection', function (socket) {
         // Use node's db injection format to filter incoming data
         db.query('INSERT INTO notes (note) VALUES (?)', data.note)
     })
-
-    // Check to see if initial query/notes are set
-    if (!isInitNotes) {
+    if (!isInitDevices) {
         // Initial app start, run db query
-        db.query('SELECT * FROM notes')
+        db.query('select id, lati_north, longti_east, lati_south, longti_west from devices')
             .on('result', function (data) {
                 // Push results onto the notes array
-                notes.push(data)
+                devices.push(data);
             })
             .on('end', function () {
                 // Only emit notes after query has been completed
-                socket.emit('initial notes', notes)
+                socket.emit('initial devices', devices);
             })
-
-        isInitNotes = true
+        isInitDevices = true
     } else {
         // Initial notes already exist, send out
-        socket.emit('initial notes', notes)
+        socket.emit('initial devices', devices)
     }
+    db.query('select max(id) as id from user_requests')
+        .on('result', function (data) {
+            // Push results onto the notes array
+            if (!data.id)
+                maxIdUserRequest = 0;
+            else maxIdUserRequest = data.id;
+        })
+        .on('end', function (dt) {
+            // Only emit notes after query has been completed
+            socket.emit('max user_requests', maxIdUserRequest);
+        })
+    socket.on('max user_requests', function (data) {
+        io.sockets.emit('max user_requests', maxIdUserRequest);
+    })
+    socket.on('new user_requests', function (data) {
+        db.query(`insert into user_requests (id, bandwidth) values(?, ?)`, data.lastRequestID, data.req_bandwidth);
+        io.sockets.emit('new user_requests', maxIdUserRequest++);
+
+    })
+
 })
