@@ -76,7 +76,7 @@ io.sockets.on('connection', function (socket) {
             WHERE NOT EXISTS (Select id From regions WHERE id =${data.id}) LIMIT 1`, null, function (err, results, fields) {
                 if (!err) {
                     console.log('insert xong regions ' + data.id);
-                    io.sockets.emit('new regions', data.id);
+                    io.sockets.emit('new regions', data);
                 }
                 else {
                     console.log(err);
@@ -91,12 +91,14 @@ io.sockets.on('connection', function (socket) {
         try {
             console.log('insert regions_of_request ' + data.usr_request_id);
             db.query(`insert into regions_of_request (usr_request_id, region_id)
-             values(${data.usr_request_id},${data.region_id})`)
-                .on('result', function (dx) {
-                    console.log('insert xong regions_of_request');
-                })
-                .on('end', function (dt) {
-                    //console.log('send noti new region ' + data.id);
+             values(${data.usr_request_id},${data.region_id})`,
+                function (err, results, fields) {
+                    if (!err) {
+                        console.log('insert xong regions_of_request ' + data.usr_request_id);
+                    }
+                    else {
+                        console.error(err);
+                    }
                 })
 
         } catch (error) {
@@ -106,13 +108,17 @@ io.sockets.on('connection', function (socket) {
     })
     socket.on('update regions', function (data) {
         try {
-            console.log('update regions' + data.device_id);
-            db.query(`update regions set device_id=${data.device_id} where id=${data.region_id}`)
-                .on('result', function (dx) {
-                    console.log('update xong regions');
+            console.log('update regions ' + data.device_id);
+            db.query(`update regions set device_id='${data.device_id}' where id=${data.region_id}`, null,
+                function (err, results, fields) {
+                    if (!err) {
+                        console.log(`update xong regions ${data.device_id} - ${data.region_id}`);
+                    }
+                    else {
+                        console.error(err);
+                    }
                 })
-                .on('end', function (dt) {
-                })
+
 
         } catch (error) {
             console.error(error);
