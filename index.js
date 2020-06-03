@@ -53,52 +53,35 @@ io.sockets.on('connection', function (socket) {
         // Initial notes already exist, send out
         io.sockets.emit('initial devices', devices)
     }
-
-    socket.on('max user_requests', function (data) {
-        console.log('get max user request');
-        db.query('select max(id) as id from user_requests')
-            .on('result', function (data) {
-                // Push results onto the notes array
-                if (!data.id)
-                    maxIdUserRequest = 0;
-                else maxIdUserRequest = data.id;
-                console.log('lay duoc max user request: ' + maxIdUserRequest);
-            })
-            .on('end', function (dt) {
-                // Only emit notes after query has been completed
-                io.sockets.emit('max user_requests', maxIdUserRequest);
-                console.log('send noti max user request ' + maxIdUserRequest);
-            })
-    })
     socket.on('new user_requests', function (data) {
         try {
-            console.log('insert user request ' + data.lastRequestID);
-            db.query(`insert into user_requests (id, bandwidth) values(${data.lastRequestID},${data.req_bandwidth})`)
+            console.log('insert user request ' + data.req_bandwidth);
+            db.query(`insert into user_requests (bandwidth) values(${data.req_bandwidth})`)
                 .on('result', function (dx) {
-                    console.log('insert xong user request');
+                    console.log('send noti new user request ' + dx.insertId);
+                    io.sockets.emit('new user_requests', dx.insertId);
                 })
                 .on('end', function (dt) {
                     // Only emit notes after query has been completed
-                    io.sockets.emit('new user_requests', data.lastRequestID);
-                    console.log('send noti new user request ' + data.lastRequestID);
                 })
-
         } catch (error) {
             console.error(error);
         }
-
     })
     socket.on('new regions', function (data) {
         try {
-            console.log('insert regions' + data.id);
+            console.log('insert regions ' + data.id);
             db.query(`insert into regions (id, lati_north, longti_east, lati_south, longti_west)
-             values(${data.id},${data.lati_north},${data.longti_east},${data.lati_south},${data.longti_west})`)
-                .on('result', function (dx) {
-                    console.log('insert xong regions');
-                })
-                .on('end', function (dt) {
-                    //console.log('send noti new region ' + data.id);
-                })
+            select ${data.id},${data.lati_north},${data.longti_east},${data.lati_south},${data.longti_west}
+            WHERE NOT EXISTS (Select id From regions WHERE id =${data.id}) LIMIT 1`, null, function (err, results, fields) {
+                if (!err) {
+                    console.log('insert xong regions ' + data.id);
+                    io.sockets.emit('new regions', data.id);
+                }
+                else {
+                    console.log(err);
+                }
+            })
 
         } catch (error) {
             console.error(error);
@@ -108,9 +91,7 @@ io.sockets.on('connection', function (socket) {
         try {
             console.log('insert regions_of_request ' + data.usr_request_id);
             db.query(`insert into regions_of_request (usr_request_id, region_id)
-             values(${data.usr_request_id},${data.region_id})`, function name(a, b, c) {
-                var dd = 2;
-            })
+             values(${data.usr_request_id},${data.region_id})`)
                 .on('result', function (dx) {
                     console.log('insert xong regions_of_request');
                 })
