@@ -1,0 +1,377 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>Adjustment Grid-based for Region Selector</title>
+    <script src="lib/jquery.min.js"></script>
+    <script src="gridgenerator.js"></script>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <link href="style.css" rel="stylesheet" type="text/css">
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // gui ket noi toi websocket server
+            var listDevices = [];
+            var socket = io.connect('http://localhost:3001');
+            socket.on('users connected', function (data) {
+                // nhan duoc dl tu kenh users connected
+                console.log('connect websocket ok');
+            })
+            socket.on('initial devices', function (data) {
+                // nhan duoc dl tu kenh initial devices
+                console.log('count list Devices: ', data.length);
+                // vi bien listDevices duoc dung di dung lai nhieu lan nen de global
+                listDevices = data;
+            })
+            $("#setup").find('input, button, select').each(function () {
+                $(this).prop('disabled', true);
+            });
+            $("#setup").css({
+                'opacity': 0.7
+            });
+            $("#divImport").find('input, button').each(function () {
+                $(this).prop('disabled', true);
+            });
+            $("#divImport").css({
+                'opacity': 0.7
+            });
+
+            $('#btnStart').click(function () {
+
+                $(":text").val('');
+                $("#fileUpload").val('');
+                $("#selectGridSize").val("0.025");
+
+                for (var i = 0; i < grids.length; i++) {
+                    grids[i].setMap(null);
+                }
+
+                grids = [];
+                placeMarker(centroid);
+
+                google.maps.event.addListener(map, 'click', function (event) {
+                    placeMarker(event.latLng);
+                });
+
+                $("#btnSetRegion").prop("disabled", false);
+                $("#btnImportCSV").prop("disabled", false);
+                $("#btnUpload").prop("disabled", false);
+                $("#fileUpload").prop("disabled", false);
+                $("#btnSaveCSV").prop("disabled", true);
+                $("#btnClear").prop("disabled", true);
+                $("#btnStart").prop("disabled", true);
+
+                $("#setup").find('input, button, select').each(function () {
+                    $(this).prop('disabled', true);
+                });
+                $("#setup").css({
+                    'opacity': 1.0
+                });
+
+                $("#divImport").find('input, button').each(function () {
+                    $(this).prop('disabled', true);
+                });
+                $("#divImport").css({
+                    'opacity': 1.0
+                });
+            });
+
+            $('#btnSetRegion').click(function () {
+                // Define the rectangle and set its editable property to true.
+                frame = new google.maps.Rectangle({
+                    bounds: {
+                        north: centroid.lat() + 0.1125,
+                        south: centroid.lat() - 0.1125,
+                        east: centroid.lng() + 0.2,
+                        west: centroid.lng() - 0.2
+                    },
+                    editable: true,
+                    draggable: true
+                });
+
+                frame.setMap(map);
+                marker.setMap(null);
+                showNewRect();
+
+                // Add an event listener on the rectangle.
+                frame.addListener('bounds_changed', showNewRect);
+
+                $("#btnApply").prop("disabled", false);
+                $("#btnImportCSV").prop("disabled", true);
+                $("#btnSetRegion").prop("disabled", true);
+
+                $("#setup").find('select').each(function () {
+                    $(this).prop('disabled', false);
+                });
+                $("#setup").css({
+                    'opacity': 1.0
+                });
+
+                $("#divImport").find('input, button').each(function () {
+                    $(this).prop('disabled', true);
+                });
+                $("#divImport").css({
+                    'opacity': 0.7
+                });
+            });
+
+            $("#btnImportCSV").click(function () {
+                $("#btnApply").prop("disabled", true);
+                $("#btnImportCSV").prop("disabled", true);
+                $("#btnSetRegion").prop("disabled", true);
+                $("#btnStart").prop("disabled", false);
+
+                $("#setup").find('select').each(function () {
+                    $(this).prop('disabled', true);
+                });
+                $("#setup").css({
+                    'opacity': 0.7
+                });
+
+                $("#divImport").find('input, button').each(function () {
+                    $(this).prop('disabled', false);
+                });
+                $("#divImport").css({
+                    'opacity': 1.0
+                });
+            });
+
+            $('#btnUpload').click(function () {
+                $("#btnUpload").prop("disabled", true);
+                $("#fileUpload").prop("disabled", true);
+            });
+
+            $('#btnApply').click(function () {
+                Apply();
+            });
+
+            $('#btnSaveCSV').click(function () {
+                var prefix_file_name = $("#txtPrefix").val();
+                exportToCsv(prefix_file_name, info);
+            });
+
+            $('#btnClear').click(function () {
+                for (var i = 0; i < grids.length; i++) {
+                    if (sta[i] == 1) {
+                        grids[i].setOptions({ fillOpacity: 0.02, fillColor: '#FF0000' });
+                        sta[i] = 0;
+                    }
+                }
+
+                $('#listRegion').html('');
+                $("#btnSaveCSV").prop("disabled", true);
+                $("#lblTotal1").html('Number of regions: <b>0</b>');
+            });
+
+            $("#selectGridSize").change(function () {
+                gsize = $(this).val();
+            });
+            $('#btnRequest').click(function () {
+                var req_bandwidth = getRequestedBandwidth(); // lay request_bandwidth
+                var locations = get_Selected_Regions(); // lay select regions 
+                var lastRequestID = 0;
+                socket.emit('new user_requests', { req_bandwidth }); // gui len server de insert vao user_requests
+                socket.on('new user_requests', function (maxId) {
+                    // insert xong user request va nhan duoc ve maxId la lastRequestID
+                    console.log('da insert xong new user_requests ' + maxId);
+                    lastRequestID = maxId;
+                    if (locations && locations.length > 0) {
+                        for (var index = 0; index < locations.length; index++) {
+                            var element = locations[index];
+
+                            var region = element.split(",");
+                            region_id = parseInt(region[0]);
+
+                            var north_east = region[1];
+                            var lati = north_east.split(";");
+                            var lati_north = parseFloat(lati[0]);
+                            var longti_east = parseFloat(lati[1]);
+
+                            var south_west = region[2];
+                            var south = south_west.split(";");
+                            var lati_south = parseFloat(south[0]);
+                            var longti_west = parseFloat(south[1]);
+                            // gui yeu cau update/insert regions
+                            socket.emit('new regions',
+                                {
+                                    id: region_id,
+                                    lati_north,
+                                    longti_east,
+                                    lati_south,
+                                    longti_west
+                                });
+                        }
+                    }
+                });
+                socket.on('new regions', function (objRegions) {
+                    // nhan duoc update/insert regions thanh cong
+                    // gui tiep insert regions_of_request 
+                    socket.emit('new regions_of_request',
+                        {
+                            usr_request_id: lastRequestID,
+                            region_id: objRegions.id
+                        });
+                    for (let jj = 0; jj < listDevices.length; jj++) {
+                        var device = listDevices[jj];
+                        if (device.lati_north >= objRegions.lati_north && device.longti_east >= objRegions.longti_east
+                            && device.lati_south <= objRegions.lati_south && device.longti_west <= objRegions.longti_west) {
+                            // gui upadte regions
+                            socket.emit('update regions',
+                                {
+                                    device_id: device.id,
+                                    region_id: objRegions.id
+                                });
+                        }
+                    }
+                });
+
+            });
+        });
+        function bw_unit_change() {
+            var unit = document.getElementById("bandwidth_units").value;
+            var input = document.getElementById("bandwidth");
+            if (unit == "mbps") {
+                input.setAttribute("min", 1);
+                input.setAttribute("max", 10);
+            } else {
+                input.setAttribute("min", 1);
+                input.setAttribute("max", 10);
+            }
+        }
+        function getRequestedBandwidth() {
+            var requested_bandwidth = 1;
+            requested_bandwidth = document.getElementById("bandwidth").value;
+            var bw_unit = document.getElementById("bandwidth_units").value;
+            if (bw_unit === "gbps")
+                requested_bandwidth *= 1024;
+            return requested_bandwidth;
+        }
+        function get_Selected_Regions() {
+            var selected_regions = [];
+            for (var i = 0; i < info.length; i++) {
+                if (sta[i] == 1)
+                    selected_regions.push(info[i]);
+            }
+            return selected_regions;
+        }
+    </script>
+
+    <style>
+        @media screen and (max-width: 1260px) {
+
+            /*The following CSS runs only for displays with a width (in pixels) of more than 800px*/
+        }
+
+        @media screen and (min-width: 1260px) {
+
+            /*The following CSS runs only for displays with a width (in pixels) of less than 800px*/
+        }
+
+        #request {
+            height: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <form id="form1" method="post">
+        <div id="container">
+            <asp:ScriptManager ID="ScriptManager1" runat="server"></asp:ScriptManager>
+            <div id="header">
+                <span>Adjustment Grid-based for Region Selector</span>
+            </div>
+            <div id="left">
+                <div id="divMap">
+                </div>
+                <div id="control">
+                    <input id='btnStart' type='button' value='Start'
+                        title="Reset the map settings. Then you can click on the map&#013;to specify the point that is close to the centroid of the grid region." />
+                    <input id='btnSetRegion' type='button' value='Set Region' disabled="disabled"
+                        title="Make an editable rectangle for setting grid region.&#013;Then, you can choose grid cell size." />
+                    <input id='btnImportCSV' type='button' value='Import Region' disabled="disabled"
+                        title="Make a fixed rectangle for setting grid region by import data from a CSV file" />
+                    <input id='btnApply' type='button' value='Apply' disabled="disabled"
+                        title="Create grid cells over gird region" />
+                    <input id='btnClear' type='button' value='Clear' disabled="disabled"
+                        style="float:right; margin-right:0px; " title="Clear all selected region on the map" />
+                    <input id='btnSaveCSV' type='button' value='Export' disabled="disabled"
+                        style="float:right; margin-right:10px" title="Export selected regions into CSV file" />
+                    <input id="txtPrefix" type="text" placeholder="Prefix file export"
+                        style="float:right; margin-right:10px; line-height:21px; margin-top:10px;" />
+                </div>
+                <div id="request">
+                    <label style="clear:both; float:left; text-align:left; vertical-align:middle; margin-top:18px"><b>Bandwidth
+                            request:</b></label>
+                    <input id="bandwidth" type="number" value="1" min="1" max="10"
+                        style="float:left; margin-left:10px; margin-top:10px; height:25px" />
+                    <select id="bandwidth_units" onchange="bw_unit_change();"
+                        style="float:left; margin-left:10px; margin-top:10px; height:28px">
+                        <option value="mbps">Mbps</option>
+                    </select>
+                    <input id='btnRequest' type='button' value='Request'
+                        style="float:left; margin-top:10px; margin-left:10px" height="30px" Width="70px" />
+                </div>
+                <div id="settings" style="position:relative">
+                    <div id="setup" style="width:100%; float:left; z-index:9999; height:150px;">
+                        <fieldset id="manual">
+                            <legend><b>Map Settings</b></legend>
+                            <div style="float:left; width:500px">
+                                <div id="latlong" style="float:left">
+                                    <span style="padding-left:20px; display:block;width:100%"><b>1. Gird
+                                            Region:</b></span>
+                                    <span style="padding-left:60px;">Corner North-East: </span>
+                                    <input id="txtLat1" type="text"
+                                        style="width:120px; line-height:21px; margin-left:6px;"
+                                        placeholder="Latitude" /><input id="txtLong1" type="text"
+                                        placeholder="Longitude" style="width:120px; line-height:21px" /> <br />
+                                    <span style="padding-left:60px;">Corner South-West: </span>
+                                    <input id="txtLat2" type="text" style="width:120px; line-height:21px"
+                                        placeholder="Latitude" /><input id="txtLong2" type="text"
+                                        placeholder="Longitude" style="width:120px; line-height:21px" />
+                                </div>
+                            </div>
+                            <div style="margin-top:10px; float:left">
+                                <span><b>2. Grid Cell Size:</b></span><br />
+                                <select id="selectGridSize"
+                                    style="width:100px; height:30px; margin-left:80px; margin-top:8px;">
+                                    <option value="0.0125">Small</option>
+                                    <option value="0.025" selected="selected">Medium</option>
+                                    <option value="0.05">Large</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div id="divImport" style="margin: 10px 0px; height: 60px;">
+                        <fieldset>
+                            <legend><b>Import from CSV file</b></legend>
+                            <input id="fileUpload" type="file" accept=".csv" value="" style="height:27px" />
+                            <input id="btnUpload" type="button" onclick="Upload()" name="name" value="Upload"
+                                style="height:27px; min-width:75px" />
+                        </fieldset>
+                    </div>
+                </div>
+            </div>
+            <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCV_uNEj6aSqtnz_iPHElehAWRZNEdUPqM&callback=initMap"></script>
+            <div id="selectedRegion">
+                <ul class="tabs">
+                    <li class="tab-link current" data-tab="tabRegion">Selected Regions</li>
+                </ul>
+                <span id="lblTotal1" style="float:right; margin-top:-30px; margin-right:30px;">Number of regions:
+                    <b>0</b>
+                </span>
+                <div id="tabRegion" class="tab-content current" style="padding: 20px 0px;">
+                    <div id='listRegion'>
+                    </div>
+                </div>
+            </div>
+            <div style="clear:both; height:5px;"></div>
+            <div
+                style="display:block; height:55px; text-align:center; width:100%; padding-top:10px; vertical-align:middle; ">
+                Copyright @ DNSLab 2016
+            </div>
+        </div>
+    </form>
+</body>
+
+</html>

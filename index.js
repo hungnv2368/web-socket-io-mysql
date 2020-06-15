@@ -1,8 +1,13 @@
 var mysql = require('mysql2');
 var config = require('config');
-var port = config.get('port');
+var port = config.get('port_socket');
+var port_server = config.get('port_server');
 var mysqlConfig = config.get('mysql');
 var io = require('socket.io').listen(port);
+var express = require('express');
+var app = express();
+app.use('/web', express.static('public'));
+app.listen(port_server);
 // dinh nghia cac thong so ket noi db mysql
 var db = mysql.createConnection({
     host: mysqlConfig.host,

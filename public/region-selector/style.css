@@ -1,0 +1,126 @@
+body {
+	font-family: Arial;
+	font-size: 14px;
+	margin: 0px;
+	padding: 0px;
+}
+
+
+#listRegion span {
+	line-height: 27px;
+	display: block;
+	width: 100%;
+}
+
+
+#selectedRegion {
+	float: right;
+	width: 430px;
+	max-height: 768px;
+}
+
+ul.tabs {
+	margin: 0px;
+	padding: 0px;
+	list-style: none;
+	border-bottom: 5px solid #359BED;
+}
+
+	ul.tabs li {
+		background: none;
+		color: #222;
+		display: inline-block;
+		padding: 10px 15px;
+		cursor: pointer;
+		font-weight: bold;
+	}
+
+		ul.tabs li.current {
+			background: #ededed;
+			background: #359BED;
+			color: #FFF;
+		}
+
+.tab-content {
+	display: none;
+}
+
+	.tab-content.current {
+		display: inherit;
+	}
+
+#tabRegion {
+	height: 768px;
+	width: 100%;
+	max-height: 768px;
+	overflow-y: scroll;
+}
+
+#btnSave, #btnReset {
+	width: 110px;
+	height: 30px;
+	background-color: #359BED;
+	border: 0px;
+	cursor: pointer;
+	color: #FFF;
+}
+
+#header {
+	width: 100%;
+	display: block;
+	height: 80px;
+}
+
+	#header span {
+		display: block;
+		line-height: 80px;
+		text-align: center;
+		font-weight: bold;
+		font-size: 28px;
+	}
+
+#left {
+	margin-left: 10px;
+	min-width: 802px;
+	min-height: 602px;
+	float: left;
+}
+
+#divMap {
+	display: block;
+	border: 1px solid gray;
+	margin: 0px;
+	min-width: 800px;
+	min-height: 600px;
+}
+
+#settings {
+	height: 220px;
+	min-width: 800px;
+	min-height: 220px;
+	background-color: #FFF;
+	margin-top: 20px;
+}
+
+#container {
+	max-width: 1260px;
+	min-width: 820px;
+	min-height: 768px;
+	margin: 0px auto;
+}
+
+#settings div {
+	display: block;
+	height: 100px;
+}
+
+#latlong {
+	line-height: 30px;
+}
+
+#control [type=button] {
+	margin-top: 10px;
+	height: 27px;
+	min-width: 75px;
+	margin-right: 8px;
+}
