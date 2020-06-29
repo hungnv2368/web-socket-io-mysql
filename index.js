@@ -6,7 +6,7 @@ var mysqlConfig = config.get('mysql');
 var io = require('socket.io').listen(port);
 var express = require('express');
 var app = express();
-app.use('/web', express.static('public'));
+app.use('/web', express.static('client'));
 app.listen(port_server);
 // dinh nghia cac thong so ket noi db mysql
 var db = mysql.createConnection({
