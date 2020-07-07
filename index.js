@@ -1,13 +1,8 @@
 var mysql = require('mysql2');
 var config = require('config');
-var port = config.get('port_socket');
-var port_server = config.get('port_server');
+var port = config.get('port');
 var mysqlConfig = config.get('mysql');
 var io = require('socket.io').listen(port);
-var express = require('express');
-var app = express();
-app.use('/web', express.static('client'));
-app.listen(port_server);
 // dinh nghia cac thong so ket noi db mysql
 var db = mysql.createConnection({
     host: mysqlConfig.host,
@@ -53,9 +48,9 @@ io.sockets.on('connection', function (socket) {
     }
     socket.on('new user_requests', function (data) {
         try {
-            console.log('insert user request ' + data.req_bandwidth);
+            console.log('insert user request ' + data.req_bandwidth+' '+data.req_delay);
             // cient gui yeu cau them moi user_requests => insert vao db xong roi gui ve client theo kenh new user_requests
-            db.query(`insert into user_requests (bandwidth) values(${data.req_bandwidth})`)
+            db.query(`insert into user_requests (bw_mbps,delay_ms) values(${data.req_bandwidth},${data.req_delay})`)
                 .on('result', function (dx) {
                     console.log('send noti new user request ' + dx.insertId);
                     io.sockets.emit('new user_requests', dx.insertId);

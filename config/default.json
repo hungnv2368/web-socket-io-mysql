@@ -1,11 +1,10 @@
 {
-    "port_socket": 3001,
+    "port": 3001,
     "mysql": {
         "host": "10.8.5.114",
         "port": 3306,
         "user": "root",
         "password": "Abc123456",
         "database": "test"
-    },
-    "port_server":3002
+    }
 }
